@@ -11,7 +11,6 @@ class AbastecimentoProcessor:
     def __init__(self, base_url: str, tenant_uuid: str, auth_token: str = None):
         self.base_url = base_url
         self.tenant_uuid = tenant_uuid
-        # Token mockado - substitua pelo seu token
         self.auth_token = auth_token or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxLCJlbWFpbCI6ImRlZmF1bHQudXNlckBncnVwb3ByYS50ZWNoIiwiaXNBcGkiOmZhbHNlfSwidGVuYW50Ijp7InV1aWQiOiJlMjNiNTIyMC1kYTdlLTQxNGQtYTc3My0yNDJjMGZjZTJjNWQifSwiaWF0IjoxNzU2NzM1MzI1LCJleHAiOjE3NTY3Nzg1MjV9.FW6Q8evr4D-Ttr5b98Zal__WiWET2MYtT14HKKW7rnw"
         self.email = "default.user@grupopra.tech"
         self.password = "GrupoPra@Tech!2025"
@@ -25,7 +24,6 @@ class AbastecimentoProcessor:
             'totalAbastecimentos': 0
         }
         
-        # Inicializar headers
         self.update_headers()
     
     def update_headers(self):
@@ -77,11 +75,9 @@ class AbastecimentoProcessor:
                     print(f"❌ Método HTTP não suportado: {method}")
                     return None
                 
-                # Se sucesso, retornar a resposta
                 if response.status_code == 200 or response.status_code == 201:
                     return response
                 
-                # Se erro 401, tentar reautenticar
                 if response.status_code == 401:
                     print(f"⚠️ Erro 401 (Unauthorized) - Tentativa {attempt + 1}/{self.max_retries}")
                     if self.authenticate():
@@ -149,7 +145,6 @@ class AbastecimentoProcessor:
     
     def fetch_person_by_cpf(self, cpf: str) -> Optional[Dict]:
         """Busca pessoa por CPF na API"""
-        # Limpar CPF removendo pontos e hífens
         clean_cpf = ''.join(filter(str.isdigit, str(cpf)))
         
         params = {
@@ -169,6 +164,125 @@ class AbastecimentoProcessor:
             if person_data and 'data' in person_data and person_data['data']:
                 return person_data['data'][0]
         
+        return None
+    
+    def format_name(self, name: str) -> str:
+        if not name:
+            return ""
+        return ' '.join(word.capitalize() for word in name.split())
+    
+    def clean_cpf(self, cpf: str) -> str:
+        if not cpf:
+            return ""
+        return ''.join(filter(str.isdigit, str(cpf)))
+    
+    def create_person(self, name: str, cpf: str) -> Optional[Dict]:
+        """Cria uma nova pessoa na API"""
+        formatted_name = self.format_name(name)
+        clean_cpf = self.clean_cpf(cpf)
+        
+        payload = {
+            "type": "Individual",
+            "gender": "male",
+            "name": formatted_name,
+            "cpf": clean_cpf,
+            "notes": "Cadastrado Automaticamente Via integração ProFrotas"
+        }
+        
+        response = self.make_request_with_retry(
+            'POST',
+            f"{self.base_url}/person",
+            json=payload
+        )
+        
+        if response and response.status_code in [200, 201]:
+            person_data = response.json()
+            if person_data and 'data' in person_data:
+                print(f"✅ Motorista cadastrado automaticamente: {formatted_name} (CPF: {clean_cpf})")
+                return person_data['data']
+        
+        print(f"❌ Erro ao cadastrar motorista: {formatted_name} (CPF: {clean_cpf})")
+        return None
+    
+    def create_vehicle(self, license_plate: str) -> Optional[Dict]:
+        """Cria um novo veículo na API"""
+        payload = {
+            "license_plate": license_plate.upper(),
+            "status": "active",
+            "number_renavan": "",
+            "vin": "",
+            "number_crv": "",
+            "doc_year": 0,
+            "model": "",
+            "model_year": 0,
+            "version": "",
+            "manufacture_year": 0,
+            "brand": "",
+            "mark": "",
+            "group": "",
+            "color": {
+                "name": "",
+                "code": ""
+            },
+            "number_seats": 0,
+            "number_doors": 0,
+            "number_large_bags": 0,
+            "number_small_bags": 0,
+            "engine_number": "",
+            "engine_power": 0,
+            "cylinders_number": 0,
+            "axles_number": 0,
+            "volume_engine": 0,
+            "volume_tank": 0,
+            "consumption": 0,
+            "options": [
+                {
+                    "id": 0,
+                    "name": ""
+                }
+            ],
+            "min_price": 0,
+            "price": 0,
+            "description": "Cadastrado automaticamente via integração com ProFrotas",
+            "last_latitude": 0,
+            "last_longitude": 0,
+            "last_address_cep": "",
+            "last_address_city": "",
+            "last_address_uf": "",
+            "last_address_street": "",
+            "last_address_number": "",
+            "last_address_complement": "",
+            "last_address_neighborhood": "",
+            "last_speed": 0,
+            "last_fuel_level": 0,
+            "last_odometer": 0,
+            "last_engine_hours": 0,
+            "registered_at_city": "",
+            "registered_at_uf": "",
+            "alienation_price": 0,
+            "alienation_payment_method": "",
+            "alienation_payment_installment": 0,
+            "alienation_payment_installment_value": 0,
+            "alienation_payment_installment_total": 0,
+            "license_documents": [0],
+            "salesPhotoIds": [0],
+            "price_sale": 0,
+            "alienation_payment_installment_payment": 0
+        }
+        
+        response = self.make_request_with_retry(
+            'POST',
+            f"{self.base_url}/vehicle",
+            json=payload
+        )
+        
+        if response and response.status_code in [200, 201]:
+            vehicle_data = response.json()
+            if vehicle_data and 'data' in vehicle_data:
+                print(f"✅ Veículo cadastrado automaticamente: {license_plate.upper()}")
+                return vehicle_data['data']
+        
+        print(f"❌ Erro ao cadastrar veículo: {license_plate.upper()}")
         return None
     
     def fetch_supplier_by_cnpj(self, cnpj: str) -> Optional[Dict]:
@@ -239,7 +353,6 @@ class AbastecimentoProcessor:
             if response and response.status_code in [200, 201]:
                 fuel_supply_data = response.json()
                 if fuel_supply_data and 'data' in fuel_supply_data and fuel_supply_data['data']:
-                    # Se encontrou registros com esse código, já existe
                     return len(fuel_supply_data['data']) > 0
             
             return False
@@ -250,16 +363,6 @@ class AbastecimentoProcessor:
     
     def create_abastecimento(self, payload: Dict) -> bool:
         """Cria abastecimento na API"""
-        response = self.make_request_with_retry(
-            'POST',
-            f"{self.base_url}/fuel-supply",
-            json=payload
-        )
-        
-        if response and response.status_code in [200, 201]:
-            return True
-        
-        return False
         response = self.make_request_with_retry(
             'POST',
             f"{self.base_url}/fuel-supply",
@@ -292,7 +395,7 @@ class AbastecimentoProcessor:
         
         try:
             if id_abastecimento:
-                print(f"🔍 Verificando se abastecimento {id_abastecimento} já existe...")
+                print(f"🔍 Verificando se abastecimento {id_abastecimento} Se já existe...")
                 if self.check_abastecimento_exists(str(id_abastecimento)):
                     print(f"✅ Abastecimento {id_abastecimento} já existe na API, pulando...")
                     return {
@@ -306,25 +409,54 @@ class AbastecimentoProcessor:
             
             # 1. Buscar veículo por placa
             vehicle_data = self.fetch_vehicle_by_plate(placa)
+            veiculo_cadastrado_automaticamente = False
             if not vehicle_data:
-                return {
-                    **abastecimento,
-                    'processed': False,
-                    'message': 'Veículo não encontrado na API',
-                    'status': 'VEICULO_NAO_ENCONTRADO'
-                }
-            
-            # 2. Buscar pessoa por CPF do motorista
-            person_data = None
-            if cpf_motorista:
-                person_data = self.fetch_person_by_cpf(cpf_motorista)
-                if not person_data:
+                # Tentar cadastrar automaticamente o veículo
+                if placa:
+                    print(f"🔄 Veículo não encontrado, tentando cadastrar automaticamente: {placa}")
+                    vehicle_data = self.create_vehicle(placa)
+                    if vehicle_data:
+                        veiculo_cadastrado_automaticamente = True
+                    else:
+                        return {
+                            **abastecimento,
+                            'processed': False,
+                            'message': f'Erro ao cadastrar veículo automaticamente - Placa: {placa}',
+                            'status': 'ERRO_CADASTRO_VEICULO'
+                        }
+                else:
                     return {
                         **abastecimento,
                         'processed': False,
-                        'message': f'Motorista não encontrado na API por CPF: {cpf_motorista}',
-                        'status': 'MOTORISTA_NAO_ENCONTRADO'
+                        'message': 'Veículo não encontrado na API e placa não fornecida para cadastro automático',
+                        'status': 'VEICULO_NAO_ENCONTRADO'
                     }
+            
+            # 2. Buscar pessoa por CPF do motorista
+            person_data = None
+            motorista_cadastrado_automaticamente = False
+            if cpf_motorista:
+                person_data = self.fetch_person_by_cpf(cpf_motorista)
+                if not person_data:
+                    if nome_motorista:
+                        print(f"🔄 Motorista não encontrado, tentando cadastrar automaticamente: {nome_motorista} (CPF: {cpf_motorista})")
+                        person_data = self.create_person(nome_motorista, cpf_motorista)
+                        if person_data:
+                            motorista_cadastrado_automaticamente = True
+                        else:
+                            return {
+                                **abastecimento,
+                                'processed': False,
+                                'message': f'Erro ao cadastrar motorista automaticamente - Nome: {nome_motorista}, CPF: {cpf_motorista}',
+                                'status': 'ERRO_CADASTRO_MOTORISTA'
+                            }
+                    else:
+                        return {
+                            **abastecimento,
+                            'processed': False,
+                            'message': f'Motorista não encontrado na API por CPF: {cpf_motorista} e nome não fornecido para cadastro automático',
+                            'status': 'MOTORISTA_NAO_ENCONTRADO'
+                        }
             
             # 3. Buscar fornecedor por CNPJ do posto
             supplier_data = None
@@ -342,7 +474,6 @@ class AbastecimentoProcessor:
             items = []
             if items_json:
                 try:
-                    # Tentar fazer parse do JSON
                     if isinstance(items_json, str):
                         items_data = json.loads(items_json)
                     else:
@@ -352,6 +483,22 @@ class AbastecimentoProcessor:
                         nome_produto = item.get('nome', '')
                         quantidade = item.get('quantidade', 0)
                         valor_total_item = item.get('valorTotal', 0)
+                        
+
+                        if valor_total_item is None or valor_total_item == "null":
+                            valor_total_item = 0
+                        if quantidade is None or quantidade == "null":
+                            quantidade = 0
+                        
+                        try:
+                            valor_total_item = float(valor_total_item)
+                        except (ValueError, TypeError):
+                            valor_total_item = 0.0
+                            
+                        try:
+                            quantidade = float(quantidade)
+                        except (ValueError, TypeError):
+                            quantidade = 0.0
                         
                         if nome_produto:
                             # Buscar produto por nome
@@ -366,7 +513,7 @@ class AbastecimentoProcessor:
                                 print(f"⚠️ Produto não encontrado: {nome_produto}")
                                 # Continuar mesmo sem o produto
                                 items.append({
-                                    "productId": 0,  # ID padrão se não encontrar
+                                    "productId": 0,
                                     "value": valor_total_item,
                                     "quantity": quantidade
                                 })
@@ -392,15 +539,11 @@ class AbastecimentoProcessor:
                 try:
                     # Converter para formato ISO com parsing explícito
                     if isinstance(data_transacao, str):
-                        # Tentar diferentes formatos de data para evitar confusão
                         try:
-                            # Primeiro tentar formato brasileiro DD/MM/YYYY
                             data_obj = pd.to_datetime(data_transacao, format='%d/%m/%Y', errors='coerce')
                             if pd.isna(data_obj):
-                                # Se falhar, tentar formato ISO YYYY-MM-DD
                                 data_obj = pd.to_datetime(data_transacao, format='%Y-%m-%d', errors='coerce')
                             if pd.isna(data_obj):
-                                # Se ainda falhar, usar parsing automático
                                 data_obj = pd.to_datetime(data_transacao)
                         except:
                             data_obj = pd.to_datetime(data_transacao)
@@ -408,7 +551,6 @@ class AbastecimentoProcessor:
                         data_obj = data_transacao
                     
                     if isinstance(hora_transacao, str):
-                        # Tentar diferentes formatos de hora
                         try:
                             hora_obj = pd.to_datetime(hora_transacao, format='%H:%M:%S', errors='coerce')
                             if pd.isna(hora_obj):
@@ -438,12 +580,12 @@ class AbastecimentoProcessor:
                 "vehicleId": vehicle_data['id'],
                 "personId": person_data['id'] if person_data else 0,
                 "supplierId": supplier_data['id'] if supplier_data else 0,
-                "companyId": 3,  # Mockado conforme solicitado
+                "companyId": 3,  
                 "code": str(id_abastecimento) if id_abastecimento else "",
                 "status": status_final,
                 "lat": float(latitude_posto) if latitude_posto else 0.0,
                 "lon": float(longitude_posto) if longitude_posto else 0.0,
-                "gasStationBrand": "IPIRANGA",  # Mockado conforme solicitado
+                "gasStationBrand": "IPIRANGA", 
                 "value": float(valor_total) if valor_total else 0.0,
                 "odometer": int(hodometro) if hodometro else 0,
                 "date": data_final,
@@ -451,21 +593,33 @@ class AbastecimentoProcessor:
             }
             
             print(f"📋 Payload montado para {placa}:")
-            print(f"   Vehicle ID: {payload['vehicleId']}")
-            print(f"   Person ID: {payload['personId']}")
-            print(f"   Supplier ID: {payload['supplierId']}")
-            print(f"   Items: {len(items)} produtos")
             
             # 8. Criar abastecimento
             success = self.create_abastecimento(payload)
             
             if success:
+                status_msg = 'CRIADO'
+                message = 'Abastecimento criado com sucesso'
+                
+                # Determinar status e mensagem baseado nos cadastros automáticos
+                if veiculo_cadastrado_automaticamente and motorista_cadastrado_automaticamente:
+                    status_msg = 'CRIADO_COM_VEICULO_E_MOTORISTA_AUTO'
+                    message = f'Abastecimento criado com sucesso. Veículo ({placa}) e motorista ({self.format_name(nome_motorista)}) cadastrados automaticamente'
+                elif veiculo_cadastrado_automaticamente:
+                    status_msg = 'CRIADO_COM_VEICULO_AUTO'
+                    message = f'Abastecimento criado com sucesso. Veículo cadastrado automaticamente: {placa}'
+                elif motorista_cadastrado_automaticamente:
+                    status_msg = 'CRIADO_COM_MOTORISTA_AUTO'
+                    message = f'Abastecimento criado com sucesso. Motorista cadastrado automaticamente: {self.format_name(nome_motorista)}'
+                
                 return {
                     **abastecimento,
                     'processed': True,
-                    'message': 'Abastecimento criado com sucesso',
-                    'status': 'CRIADO',
-                    'payload': payload
+                    'message': message,
+                    'status': status_msg,
+                    'payload': payload,
+                    'motorista_cadastrado_automaticamente': motorista_cadastrado_automaticamente,
+                    'veiculo_cadastrado_automaticamente': veiculo_cadastrado_automaticamente
                 }
             else:
                 return {
@@ -490,17 +644,11 @@ class AbastecimentoProcessor:
         for i, abastecimento in enumerate(self.static_data['allAbastecimentos']):
             self.static_data['currentIndex'] = i
             
-            # Processar abastecimento
             result = self.process_abastecimento(abastecimento)
-            
-            # Salvar resultado
             self.static_data['results'].append(result)
-            
-            # Mostrar progresso
             progress = (i + 1) / self.static_data['totalAbastecimentos'] * 100
             print(f"📊 Progresso: {i + 1}/{self.static_data['totalAbastecimentos']} ({progress:.1f}%)")
             
-            # Pequena pausa para não sobrecarregar a API
             time.sleep(0.5)
         
         print("🏁 Processamento finalizado!")
@@ -511,13 +659,10 @@ class AbastecimentoProcessor:
         
         results = self.static_data['results']
         
-        # Criar DataFrame para Excel
         excel_data = []
         
         for r in results:
-            # Manter todas as colunas originais da planilha
             excel_data.append({
-                # Colunas originais da planilha (mantidas exatamente como estão)
                 'Placa': r.get('Placa', ''),
                 'CPF Motorista': r.get('CPF Motorista', ''),
                 'Nome Motorista': r.get('Nome Motorista', ''),
@@ -532,42 +677,37 @@ class AbastecimentoProcessor:
                 'Data Transação': r.get('Data Transação', ''),
                 'Hora': r.get('Hora', ''),
                 'Items JSON': r.get('Items JSON', ''),
-                
-                # Colunas de status do processamento (adicionadas no final)
                 'STATUS_PROCESSAMENTO': r.get('status', ''),
                 'PROCESSADO': 'SIM' if r.get('processed', False) else 'NÃO',
+                'VEICULO_CADASTRADO_AUTO': 'SIM' if r.get('veiculo_cadastrado_automaticamente', False) else 'NÃO',
+                'MOTORISTA_CADASTRADO_AUTO': 'SIM' if r.get('motorista_cadastrado_automaticamente', False) else 'NÃO',
                 'MENSAGEM': r.get('message', ''),
                 'PAYLOAD': json.dumps(r.get('payload', {}), ensure_ascii=False) if r.get('payload') else ''
             })
         
-        # Criar DataFrame
         df = pd.DataFrame(excel_data)
         
-        # Salvar em Excel
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         excel_file = f'relatorio_abastecimento_{timestamp}.xlsx'
         
         with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
-            # Aba com dados detalhados (planilha original + status)
             df.to_excel(writer, sheet_name='Dados Completos', index=False)
             
-            # Aba apenas com dados originais (para reprocessamento)
-            colunas_originais = [
-                'Placa', 'CPF Motorista', 'Nome Motorista', 'CNPJ Posto', 'Razão Social Posto',
-                'ID Abastecimento', 'Status Autorização', 'Latitude Posto', 'Longitude Posto',
-                'Valor Total Abastecimento', 'Hodômetro', 'Data Transação', 'Hora', 'Items JSON'
-            ]
-            df_original = df[colunas_originais]
-            df_original.to_excel(writer, sheet_name='Dados Originais', index=False)
+            df_erros = df[df['PROCESSADO'] == 'NÃO']
+            df_erros.to_excel(writer, sheet_name='Erros', index=False)
             
-            # Aba com resumo
             summary_data = {
                 'Métrica': [
                     'Total Processados',
                     'Criados com Sucesso',
+                    'Criados com Veículo Cadastrado Automaticamente',
+                    'Criados com Motorista Cadastrado Automaticamente',
+                    'Criados com Veículo e Motorista Cadastrados Automaticamente',
                     'Já Existem na API',
                     'Veículos Não Encontrados',
+                    'Erros ao Cadastrar Veículo',
                     'Motoristas Não Encontrados',
+                    'Erros ao Cadastrar Motorista',
                     'Fornecedores Não Encontrados',
                     'Erros de JSON nos Items',
                     'Erros de Processamento',
@@ -576,9 +716,14 @@ class AbastecimentoProcessor:
                 'Quantidade': [
                     len(results),
                     len([r for r in results if r.get('status') == 'CRIADO']),
+                    len([r for r in results if r.get('status') == 'CRIADO_COM_VEICULO_AUTO']),
+                    len([r for r in results if r.get('status') == 'CRIADO_COM_MOTORISTA_AUTO']),
+                    len([r for r in results if r.get('status') == 'CRIADO_COM_VEICULO_E_MOTORISTA_AUTO']),
                     len([r for r in results if r.get('status') == 'JA_EXISTE']),
                     len([r for r in results if r.get('status') == 'VEICULO_NAO_ENCONTRADO']),
+                    len([r for r in results if r.get('status') == 'ERRO_CADASTRO_VEICULO']),
                     len([r for r in results if r.get('status') == 'MOTORISTA_NAO_ENCONTRADO']),
+                    len([r for r in results if r.get('status') == 'ERRO_CADASTRO_MOTORISTA']),
                     len([r for r in results if r.get('status') == 'FORNECEDOR_NAO_ENCONTRADO']),
                     len([r for r in results if r.get('status') == 'ERRO_JSON_ITEMS']),
                     len([r for r in results if r.get('status') == 'ERRO_PROCESSAMENTO']),
@@ -590,7 +735,6 @@ class AbastecimentoProcessor:
             summary_df.to_excel(writer, sheet_name='Resumo', index=False)
         
         print(f"📊 Relatório Excel salvo: {excel_file}")
-        print(f"📋 Aba 'Dados Originais' criada para reprocessamento")
         
         return {
             'relatorio': {
@@ -604,13 +748,8 @@ class AbastecimentoProcessor:
         print("🚀 Iniciando processamento de abastecimentos...")
         print("=" * 60)
         
-        # 1. Carregar dados da planilha
         self.load_abastecimentos_from_sheet(sheet_data)
-        
-        # 2. Processar todos os registros
         self.process_all_abastecimentos()
-        
-        # 3. Gerar relatório final
         report = self.generate_report()
         
         print("=" * 60)
@@ -625,15 +764,12 @@ def main():
     BASE_URL = "https://prafrota-be-bff-tenant-api.grupopra.tech"
     TENANT_UUID = "e23b5220-da7e-414d-a773-242c0fce2c5d"
 
-    planilha = "ProFrotas - Integration/resource - abastecimento/Abastecimento-Julho.xlsx"
+    planilha = "ProFrotas - Integration/resource/Abastecimento-Agosto.xlsx"
     
     try:
         print(f"📊 Carregando dados da planilha: {planilha}")
         
-        # Ler a planilha
         df = pd.read_excel(planilha)
-        
-        # Converter para lista de dicionários
         sheet_data = df.to_dict('records')
         
         print(f"📊 Total de registros encontrados: {len(sheet_data)}")
@@ -641,13 +777,7 @@ def main():
         if not sheet_data:
             print("❌ Nenhum registro encontrado na planilha!")
             return
-        
-        # Mostrar primeiros registros
-        print("\n📋 Primeiros 3 registros:")
-        for i, registro in enumerate(sheet_data[:3]):
-            print(f"  {i+1}. Colunas disponíveis: {list(registro.keys())}")
-        
-        # Verificar colunas obrigatórias
+            
         colunas_esperadas = [
             'Placa', 'CPF Motorista', 'Nome Motorista', 'CNPJ Posto', 'Razão Social Posto', 'ID Abastecimento',
             'Status Autorização', 'Latitude Posto', 'Longitude Posto',
@@ -662,11 +792,9 @@ def main():
         else:
             print("✅ Todas as colunas esperadas foram encontradas na planilha")
         
-        # Criar instância e executar
         processor = AbastecimentoProcessor(BASE_URL, TENANT_UUID)
         report = processor.run(sheet_data)
         
-        # O relatório Excel já foi gerado na função generate_report()
         excel_file = report['relatorio']['arquivo_excel']
         print(f"📄 Relatório Excel salvo em '{excel_file}'")
         
