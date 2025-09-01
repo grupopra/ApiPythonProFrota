@@ -1,0 +1,18 @@
+# Dependências do projeto ProFrotas - Abastecimento Processor
+# Arquivo de requisitos para instalação via pip
+
+# Biblioteca para fazer requisições HTTP
+requests>=2.31.0
+
+# Biblioteca para manipulação de dados e planilhas Excel
+pandas>=2.0.0
+
+# Biblioteca para trabalhar com arquivos Excel (necessária para pandas)
+openpyxl>=3.1.0
+
+# Bibliotecas padrão do Python (não precisam ser instaladas)
+# json - biblioteca padrão
+# typing - biblioteca padrão (Python 3.5+)
+# datetime - biblioteca padrão
+# time - biblioteca padrão
+# os - biblioteca padrão
